@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <math.h>
 
+#define NELDER_MEAD_IMPLEMENTATION
 #include "nelder_mead.h"
 
 #define PI 3.1415926535897932384626433832795
@@ -49,10 +50,10 @@ int main(int argc, const char *argv[]) {
 
   // reading initial point from command line
   const int n = argc - 1;
-  point_t start; // initial point
-  start.x = malloc(n * sizeof(double));
+
+  double *start = malloc(n * sizeof(double));
   for (int i = 0; i < n; i++) {
-    start.x[i] = atof(argv[i + 1]);
+    start[i] = atof(argv[i + 1]);
   }
 
   // optimisation settings
@@ -70,28 +71,29 @@ int main(int argc, const char *argv[]) {
   ackley_params.c = 2.0 * PI;
 
   // call optimization methods
-  point_t solution;    // container for the solution of the minimisation
-  nelder_mead(n, &start, &solution, &ackley_fun, &ackley_params, &optimset);
+  // container for the solution of the minimisation
+  double* solution = malloc(n * sizeof(double));
+  double solution_fx = nelder_mead(n, start, solution, &ackley_fun, &ackley_params, &optimset);
 
   // evaluate and print starting point
   printf("Initial point\n");
-  double start_fx = ackley_fun(n, start.x, &ackley_params);
+  double start_fx = ackley_fun(n, start, &ackley_params);
   printf("x = [ ");
   for (int i = 0; i < n; i++) {
-    printf("%.8f ", start.x[i]);
+    printf("%.8f ", start[i]);
   }
   printf("], fx = %.8f \n", start_fx);
   // print solution
   printf("Solution\n");
   printf("x = [ ");
   for (int i = 0; i < n; i++) {
-    printf("%.8f ", solution.x[i]);
+    printf("%.8f ", solution[i]);
   }
-  printf("], fx = %.8f \n", solution.fx);
+  printf("], fx = %.8f \n", solution_fx);
 
   // free memory
-  free(start.x);
-  free(solution.x);
+  free(start);
+  free(solution);
 
   return 0;
 }
