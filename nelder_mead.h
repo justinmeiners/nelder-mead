@@ -1,16 +1,16 @@
 /*
+   MIT Licence.
+   Copyright (c) 2017 Matteo Maggioni, 2021 Justin Meiners
+
    Do this:
       #define NELDER_MEAD_IMPLEMENTATION
    before you include this file in *one* C or C++ file to create the implementation.
 
-    
+
 */
 
 #ifndef NELDER_MEAD_H
 #define NELDER_MEAD_H
-
-// MIT Licence.
-// Copyright (c) 2017 Matteo Maggioni, 2021 Justin Meiners
 
 #ifdef __cplusplus
 extern "C"
@@ -26,13 +26,25 @@ typedef struct {
   double tolx;
   double tolf;
   int max_iter;
-  int max_eval;
   int verbose;
 } optimset_t;
 
+// reasonable defaults are listed for each
+
+typedef struct {
+  // 
+  double initial_simplex_ratio;
+  double initial_simplex_constant;
+    
+
+  double reflect;  // 1.0
+  double expand;   // 2.0
+  double contract; // 0.5
+  double shrink;   // 0.5
+} optimset_ext_t;
 
 // Cost function interface.
-typedef double (*multivar_real_val_func_t)(int, const double*, const void *);
+typedef double (*multivar_real_val_func_t)(int, const double *, void *);
 
 //-----------------------------------------------------------------------------
 // Nelder-Mead simplex algorithm
@@ -53,9 +65,21 @@ double nelder_mead(
     const double *initial_point,
     double *solution_point,
     multivar_real_val_func_t cost_func,
-    const void *args,
-    const optimset_t *options
+    void *args,
+    const optimset_t *settings
 );
+
+
+double nelder_mead_ext(
+    int dimension,
+    const double *initial_point,
+    double *solution_point,
+    multivar_real_val_func_t cost_func,
+    void *args,
+    const optimset_t *settings,
+    const optimset_ext_t *ext_settings
+);
+
 
 
 #ifdef __cplusplus
@@ -70,11 +94,6 @@ double nelder_mead(
 #include <stdlib.h>
 #include <math.h>
 #include <string.h>
-
-#define RHO 1.0
-#define CHI 2.0
-#define GAMMA 0.5
-#define SIGMA 0.5
 
 // define a generic point containing a position (x) and a value (fx)
 typedef struct {
@@ -123,9 +142,9 @@ static void get_centroid(const simplex_t *simplex, point_t *centroid) {
 // Assess if simplex satisfies the minimization requirements
 //-----------------------------------------------------------------------------
 
-static int continue_minimization(const simplex_t *simplex, int eval_count,
+static int continue_minimization(const simplex_t *simplex, 
                           int iter_count, const optimset_t *optimset) {
-  if (eval_count > optimset->max_eval || iter_count > optimset->max_iter) {
+  if (iter_count > optimset->max_iter) {
     // stop if #evals or #iters are greater than the max allowed
     return 0;
   }
@@ -174,13 +193,44 @@ void swap_points(point_t *p1, point_t *p2) {
 }
 
 double nelder_mead(
+    int dimension,
+    const double *initial_point,
+    double *solution_point,
+    multivar_real_val_func_t cost_func,
+    void *args,
+    const optimset_t *settings
+) {
+    optimset_ext_t ext;
+    ext.reflect = 1.0;
+    ext.expand = 2.0;
+    ext.contract = 0.5;
+    ext.shrink = 0.5;
+
+    return nelder_mead_ext(
+        dimension,
+        initial_point,
+        solution_point,
+        cost_func,
+        args,
+        settings,
+        &ext
+    );
+}
+
+double nelder_mead_ext(
 	int n,
 	const double *start,
 	double *solution,
 	multivar_real_val_func_t cost_func,
-	const void *args,
-	const optimset_t *optimset
+	void *args,
+	const optimset_t *optimset,
+    const optimset_ext_t *ext
 ) {
+  // params
+  double RHO = ext->reflect;
+  double CHI = ext->expand;
+  double GAMMA = ext->contract;
+  double SIGMA = ext->shrink;
 
   // internal points
   point_t point_r;
@@ -196,7 +246,6 @@ double nelder_mead(
   centroid.x = internal_buffer + 3 * n; 
 
   int iter_count = 0;
-  int eval_count = 0;
 
   // initial simplex has size n + 1 where n is the dimensionality pf the data
   simplex_t simplex;
@@ -213,7 +262,6 @@ double nelder_mead(
                        : start[j];
     }
     simplex.p[i].fx = cost_func(n, simplex.p[i].x, args);
-    eval_count++;
   }
   // sort points in the simplex so that simplex.p[0] is the point having
   // minimum fx and simplex.p[n] is the one having the maximum fx
@@ -223,7 +271,7 @@ double nelder_mead(
   iter_count++;
 
   // continue minimization until stop conditions are met
-  while (continue_minimization(&simplex, eval_count, iter_count, optimset)) {
+  while (continue_minimization(&simplex, iter_count, optimset)) {
     int shrink = 0;
 
     if (optimset->verbose) {
@@ -232,11 +280,9 @@ double nelder_mead(
     update_point(&simplex, &centroid, RHO, &point_r);
     point_r.fx = cost_func(n, point_r.x, args);
 
-    eval_count++;
     if (point_r.fx < simplex.p[0].fx) {
       update_point(&simplex, &centroid, RHO * CHI, &point_e);
       point_e.fx = cost_func(n, point_e.x, args);
-      eval_count++;
       if (point_e.fx < point_r.fx) {
         // expand
         if (optimset->verbose) {
@@ -261,7 +307,6 @@ double nelder_mead(
         if (point_r.fx < simplex.p[n].fx) {
           update_point(&simplex, &centroid, RHO * GAMMA, &point_c);
           point_c.fx = cost_func(n, point_c.x, args);
-          eval_count++;
           if (point_c.fx <= point_r.fx) {
             // contract outside
             if (optimset->verbose) {
@@ -278,7 +323,6 @@ double nelder_mead(
         } else {
           update_point(&simplex, &centroid, -GAMMA, &point_c);
           point_c.fx = cost_func(n, point_c.x, args);
-          eval_count++;
           if (point_c.fx <= simplex.p[n].fx) {
             // contract inside
             if (optimset->verbose) {
@@ -303,7 +347,6 @@ double nelder_mead(
         }
 
         simplex.p[i].fx = cost_func(n, simplex.p[i].x, args);
-        eval_count++;
       }
       simplex_sort(&simplex);
     } else {
