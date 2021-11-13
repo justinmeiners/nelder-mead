@@ -17,68 +17,72 @@ extern "C"
 {
 #endif
 
+
 //-----------------------------------------------------------------------------
 // Definitions
 //-----------------------------------------------------------------------------
 
-// define optimization settings
+// Cost function interface.
+// Multivariable real-valued function.
+
+// Parameters:
+// - dimension of the data
+// - input point (array of n values)
+// - args is user provided data 
+typedef double (*nm_multivar_real_func_t)(int, const double *, void *);
+
 typedef struct {
   double tolx;
   double tolf;
   int max_iter;
   int verbose;
-} optimset_t;
-
-// reasonable defaults are listed for each
-
-typedef struct {
-  // 
-  double initial_simplex_ratio;
-  double initial_simplex_constant;
-    
-
-  double reflect;  // 1.0
-  double expand;   // 2.0
-  double contract; // 0.5
-  double shrink;   // 0.5
-} optimset_ext_t;
-
-// Cost function interface.
-typedef double (*multivar_real_val_func_t)(int, const double *, void *);
+} nm_optimset_t;
 
 //-----------------------------------------------------------------------------
 // Nelder-Mead simplex algorithm
-// Optimization for multivariable real-valued functions having a real value, without derivatives.
+// Multivariable optimization without derivatives.
+
+// See: http://www.scholarpedia.org/article/Nelder-Mead_algorithm
 //
 // Parameters:
 // - dimension of the data
-// - initial point (unchanged in output)
-// - solution_point is the minimizer
-// - cost_function is a pointer to a real valued function to optimize 
+// - start is the initial point to search around (array of n values)
+// - out is the point which minimizes function (array of n values)
+// - out_val is the cost_func
+// - cost_fuc is a pointer to a function to optimize 
 // - args are the optional arguments passed to the cost_function
-// - optimset are the optimisation settings
+// - optimset is tolerance and iteration control. 
 //
-// Returns: the function value at the solution point
+// Returns:
+// - 1: found solution within tolerances.
+// - 0: reached iteration limit.
 //-----------------------------------------------------------------------------
-double nelder_mead(
+int nm_multivar_optimize(
     int dimension,
-    const double *initial_point,
-    double *solution_point,
-    multivar_real_val_func_t cost_func,
+    const double *start,
+    double *out,
+    double *out_val,
+    nm_multivar_real_func_t cost_func,
     void *args,
-    const optimset_t *settings
+    const nm_optimset_t *optimset
 );
 
+// Same as above but with additional options.
 
-double nelder_mead_ext(
+// Parameters
+// - simplex_scale is how large the initial simplex is (array of n-values)
+
+int nm_multivar_optimize_opt(
     int dimension,
-    const double *initial_point,
-    double *solution_point,
-    multivar_real_val_func_t cost_func,
+    const double *start,
+    double *out,
+    double *out_val,
+    nm_multivar_real_func_t cost_func,
     void *args,
-    const optimset_t *settings,
-    const optimset_ext_t *ext_settings
+    const nm_optimset_t *optimset,
+    const double* simplex_scale
 );
+
 
 
 
@@ -94,6 +98,7 @@ double nelder_mead_ext(
 #include <stdlib.h>
 #include <math.h>
 #include <string.h>
+
 
 // define a generic point containing a position (x) and a value (fx)
 typedef struct {
@@ -143,7 +148,7 @@ static void get_centroid(const simplex_t *simplex, point_t *centroid) {
 //-----------------------------------------------------------------------------
 
 static int continue_minimization(const simplex_t *simplex, 
-                          int iter_count, const optimset_t *optimset) {
+                          int iter_count, const nm_optimset_t *optimset) {
   if (iter_count > optimset->max_iter) {
     // stop if #evals or #iters are greater than the max allowed
     return 0;
@@ -186,52 +191,50 @@ static void copy_point(int n, const point_t *src, point_t *dst) {
   dst->fx = src->fx;
 }
 
-void swap_points(point_t *p1, point_t *p2) {
+static void swap_points(point_t *p1, point_t *p2) {
   point_t temp = *p1;
   *p1 = *p2;
   *p2 = temp;
 }
 
-double nelder_mead(
-    int dimension,
-    const double *initial_point,
-    double *solution_point,
-    multivar_real_val_func_t cost_func,
-    void *args,
-    const optimset_t *settings
-) {
-    optimset_ext_t ext;
-    ext.reflect = 1.0;
-    ext.expand = 2.0;
-    ext.contract = 0.5;
-    ext.shrink = 0.5;
-
-    return nelder_mead_ext(
-        dimension,
-        initial_point,
-        solution_point,
-        cost_func,
-        args,
-        settings,
-        &ext
-    );
-}
-
-double nelder_mead_ext(
+int nm_multivar_optimize(
 	int n,
 	const double *start,
-	double *solution,
-	multivar_real_val_func_t cost_func,
+	double *out,
+    double *out_val,
+	nm_multivar_real_func_t cost_func,
 	void *args,
-	const optimset_t *optimset,
-    const optimset_ext_t *ext
+	const nm_optimset_t *optimset
 ) {
-  // params
-  double RHO = ext->reflect;
-  double CHI = ext->expand;
-  double GAMMA = ext->contract;
-  double SIGMA = ext->shrink;
+    double* simplex_scales = malloc(n * sizeof(double));
 
+    for (int j = 0; j < n; ++j) {
+        simplex_scales[j] = 1.05 * start[j] + 0.00025;
+    }
+
+    int result = nm_multivar_optimize_opt(n, start, out, out_val, cost_func, args, optimset, simplex_scales);
+
+    free(simplex_scales);
+    return result;
+}
+
+
+
+#define RHO 1.0
+#define CHI 2.0
+#define GAMMA 0.5
+#define SIGMA 0.5
+
+int nm_multivar_optimize_opt(
+    int n,
+    const double *start,
+    double *out,
+    double *out_val,
+    nm_multivar_real_func_t cost_func,
+    void *args,
+    const nm_optimset_t *optimset,
+    const double* simplex_scale
+) {
   // internal points
   point_t point_r;
   point_t point_e;
@@ -257,9 +260,7 @@ double nelder_mead_ext(
   for (int i = 0; i < n + 1; i++) {
     simplex.p[i].x = point_buffer + i * n; 
     for (int j = 0; j < n; j++) {
-      simplex.p[i].x[j] =
-          (i - 1 == j) ? (start[j] != 0.0 ? 1.05 * start[j] : 0.00025)
-                       : start[j];
+      simplex.p[i].x[j] = start[j] + ((i - 1 == j) ? simplex_scale[j] : 0.0);
     }
     simplex.p[i].fx = cost_func(n, simplex.p[i].x, args);
   }
@@ -367,9 +368,11 @@ double nelder_mead_ext(
   }
 
   // save solution in output argument
-  double min_fx = simplex.p[0].fx;
-  if (solution) {
-    memcpy(solution, simplex.p[0].x, n * sizeof(double));
+  if (out) {
+    memcpy(out, simplex.p[0].x, n * sizeof(double));
+  }
+  if (out_val) {
+     *out_val =  simplex.p[0].fx;
   }
 
   // free memory
@@ -377,7 +380,13 @@ double nelder_mead_ext(
   free(point_buffer);
   free(simplex.p);
 
-  return min_fx;
+  return iter_count < optimset->max_iter;
 }
+
+#undef RHO
+#undef CHI
+#undef GAMMA
+#undef SIGMA
+
 
 #endif

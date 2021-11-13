@@ -57,7 +57,7 @@ int main(int argc, const char *argv[]) {
   }
 
   // optimisation settings
-  optimset_t optimset;
+  nm_optimset_t optimset;
   optimset.tolx = 0.001;    // tolerance on the simplex solutions coordinates
   optimset.tolf = 0.001;    // tolerance on the function value
   optimset.max_iter = 1000; // maximum number of allowed iterations
@@ -71,8 +71,9 @@ int main(int argc, const char *argv[]) {
 
   // call optimization methods
   // container for the solution of the minimisation
-  double* solution = malloc(n * sizeof(double));
-  double solution_fx = nelder_mead(n, start, solution, &ackley_fun, &ackley_params, &optimset);
+  double* solution_x = malloc(n * sizeof(double));
+  double solution_fx;
+  int code = nm_multivar_optimize(n, start, solution_x, &solution_fx, &ackley_fun, &ackley_params, &optimset);
 
   // evaluate and print starting point
   printf("Initial point\n");
@@ -86,13 +87,18 @@ int main(int argc, const char *argv[]) {
   printf("Solution\n");
   printf("x = [ ");
   for (int i = 0; i < n; i++) {
-    printf("%.8f ", solution[i]);
+    printf("%.8f ", solution_x[i]);
   }
   printf("], fx = %.8f \n", solution_fx);
 
+  if (code == 0) {
+    printf("Exceeded max iterations\n");
+  }
+
+
   // free memory
   free(start);
-  free(solution);
+  free(solution_x);
 
   return 0;
 }
