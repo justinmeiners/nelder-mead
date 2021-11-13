@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <string.h>
 
 #include "nelder_mead.h"
 
@@ -10,14 +11,9 @@
 //-----------------------------------------------------------------------------
 
 static int compare(const void *arg1, const void *arg2) {
-  const double fx1 = (((point_t *)arg1)->fx);
-  const double fx2 = (((point_t *)arg2)->fx);
-
-  if (fx1 == fx2) {
-    return 0;
-  } else {
-    return (fx1 < fx2) ? -1 : 1;
-  }
+  double fx1 = ((const point_t *)arg1)->fx;
+  double fx2 = ((const point_t *)arg2)->fx;
+  return (fx1 > fx2) - (fx1 < fx2);
 }
 
 static void simplex_sort(simplex_t *simplex) {
@@ -29,6 +25,7 @@ static void simplex_sort(simplex_t *simplex) {
 //-----------------------------------------------------------------------------
 
 static void get_centroid(const simplex_t *simplex, point_t *centroid) {
+  // (last point is not included)
   for (int j = 0; j < simplex->n; j++) {
     centroid->x[j] = 0;
     for (int i = 0; i < simplex->n; i++) {
@@ -39,7 +36,7 @@ static void get_centroid(const simplex_t *simplex, point_t *centroid) {
 }
 
 //-----------------------------------------------------------------------------
-// Asses if simplex satisfies the minimization requirements
+// Assess if simplex satisfies the minimization requirements
 //-----------------------------------------------------------------------------
 
 static int continue_minimization(const simplex_t *simplex, int eval_count,
@@ -50,15 +47,9 @@ static int continue_minimization(const simplex_t *simplex, int eval_count,
   }
   int n = simplex->n;
 
+  double condf = simplex->p[n].fx - simplex->p[0].fx;
+  
   double condx = -1.0;
-  double condf = -1.0;
-
-  for (int i = 1; i < simplex->n + 1; i++) {
-    const double temp = fabs(simplex->p[0].fx - simplex->p[i].fx);
-    if (condf < temp) {
-      condf = temp;
-    }
-  }
   for (int i = 1; i < simplex->n + 1; i++) {
     for (int j = 0; j < simplex->n; j++) {
       const double temp = fabs(simplex->p[0].x[j] - simplex->p[i].x[j]);
@@ -88,24 +79,15 @@ static void update_point(const simplex_t *simplex, const point_t *centroid,
 //-----------------------------------------------------------------------------
 
 static void copy_point(int n, const point_t *src, point_t *dst) {
-  for (int j = 0; j < n; j++) {
-    dst->x[j] = src->x[j];
-  }
+  memcpy(dst->x, src->x, sizeof(double) * n);
   dst->fx = src->fx;
 }
 
-void swap_points(int n, point_t *p1, point_t *p2) {
-  double temp;
-  for (int j = 0; j < n; j++) {
-    temp = p1->x[j];
-    p1->x[j] = p2->x[j];
-    p2->x[j] = temp;
-  }
-  temp = p1->fx;
-  p1->fx = p2->fx;
-  p2->fx = temp;
+void swap_points(point_t *p1, point_t *p2) {
+  point_t temp = *p1;
+  *p1 = *p2;
+  *p2 = temp;
 }
-
 
 void nelder_mead(
 	int n,
@@ -238,7 +220,7 @@ void nelder_mead(
       simplex_sort(&simplex);
     } else {
       for (int i = n - 1; i >= 0 && simplex.p[i + 1].fx < simplex.p[i].fx; i--) {
-        swap_points(n, simplex.p + (i + 1), simplex.p + i);
+        swap_points(simplex.p + (i + 1), simplex.p + i);
       }
     }
     get_centroid(&simplex, &centroid);
