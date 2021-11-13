@@ -7,18 +7,18 @@ This is a fork of [Matteo's work](https://github.com/matteotiziano/nelder-mead) 
 
 - improved performance and memory usage.
 - optional parameters for configuring the initial simplex.
-- simplifed interface and calling convention to use primitive types.
+- improved interface especially focus on primitive types.
 - single header style instead of two file.
 - safe for C++ include.
 
 ## Include
 
-Copy `nelder_mead.h` into your project. This is a single header style.
-Include it normally to get forward definitions:
+Copy `nelder_mead.h` into your project. It is "single header style",
+so whenever you want the forward definitions include it normally:
 
     #include "nelder_mead.h"
 
-Then it at least one `.c` file, include it again with the preprocessor defined to get the implementation:
+Then it at least one `.c` file, include it again with a macro defined to get the implementation:
 
     #define NELDER_MEAD_IMPLEMENTATION
     #include "nelder_mead.h`
@@ -26,7 +26,7 @@ Then it at least one `.c` file, include it again with the preprocessor defined t
 ## Example
 
 See `main.c` for a simple example with the [Ackely function](http://www.sfu.ca/%7Essurjano/ackley.html).
-The package can be compiled and tested from command line using the Makefile provided 
+The test can be compiled and tested from command line using the Makefile provided.
 
     make
     make test
