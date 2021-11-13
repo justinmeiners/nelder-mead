@@ -17,7 +17,6 @@ extern "C"
 {
 #endif
 
-
 //-----------------------------------------------------------------------------
 // Definitions
 //-----------------------------------------------------------------------------
@@ -82,9 +81,6 @@ int nm_multivar_optimize_opt(
     const nm_optimset_t *optimset,
     const double* simplex_size
 );
-
-
-
 
 #ifdef __cplusplus
 }
