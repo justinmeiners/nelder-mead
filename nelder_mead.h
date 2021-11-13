@@ -206,15 +206,11 @@ int nm_multivar_optimize(
 	void *args,
 	const nm_optimset_t *optimset
 ) {
-    double* simplex_scales = malloc(n * sizeof(double));
+    double* simplex_scale = malloc(n * sizeof(double));
 
-    for (int j = 0; j < n; ++j) {
-        simplex_scales[j] = 1.05 * start[j] + 0.00025;
-    }
+    int result = nm_multivar_optimize_opt(n, start, out, out_val, cost_func, args, optimset, simplex_scale);
 
-    int result = nm_multivar_optimize_opt(n, start, out, out_val, cost_func, args, optimset, simplex_scales);
-
-    free(simplex_scales);
+    free(simplex_scale);
     return result;
 }
 
@@ -260,7 +256,9 @@ int nm_multivar_optimize_opt(
   for (int i = 0; i < n + 1; i++) {
     simplex.p[i].x = point_buffer + i * n; 
     for (int j = 0; j < n; j++) {
-      simplex.p[i].x[j] = start[j] + ((i - 1 == j) ? simplex_scale[j] : 0.0);
+      simplex.p[i].x[j] =
+          (i - 1 == j) ? (start[j] != 0.0 ? 1.05 * start[j] : 0.00025)
+                       : start[j];
     }
     simplex.p[i].fx = cost_func(n, simplex.p[i].x, args);
   }
@@ -372,7 +370,7 @@ int nm_multivar_optimize_opt(
     memcpy(out, simplex.p[0].x, n * sizeof(double));
   }
   if (out_val) {
-     *out_val =  simplex.p[0].fx;
+     *out_val = simplex.p[0].fx;
   }
 
   // free memory
