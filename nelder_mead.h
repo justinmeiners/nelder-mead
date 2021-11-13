@@ -1,17 +1,19 @@
 #ifndef NELDER_MEAD_H
 #define NELDER_MEAD_H
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 //-----------------------------------------------------------------------------
 // Definitions
 //-----------------------------------------------------------------------------
-
-#define PI 3.1415926535897932384626433832795
 
 #define RHO 1.0
 #define CHI 2.0
 #define GAMMA 0.5
 #define SIGMA 0.5
-#define SQUARE(x) ((x) * (x))
 
 // define a generic point containing a position (x) and a value (fx)
 typedef struct {
@@ -39,31 +41,28 @@ typedef struct {
 // Cost function interface
 //-----------------------------------------------------------------------------
 
-typedef void (*fun_t)(int, point_t *, const void *);
+typedef double (*multivar_real_val_func_t)(int, const double*, const void *);
 
 //-----------------------------------------------------------------------------
-// Nelder-Mead algorithm and template cost function
+// Nelder-Mead algorithm
+// - dimension of the data
+// - initial point (unchanged in output)
+// - solution_point is the minimizer
+// - cost_function is a pointer to a real valued function to optimize 
+// - args are the optional arguments passed to the cost_function
+// - optimset are the optimisation settings
 //-----------------------------------------------------------------------------
-void nelder_mead(int, const point_t *, point_t *, fun_t, const void *, const optimset_t *);
+void nelder_mead(
+    int dimension,
+    const point_t *initial_point,
+    point_t *solution_point,
+    multivar_real_val_func_t cost_func,
+    const void *args,
+    const optimset_t *options
+);
 
-//-----------------------------------------------------------------------------
-// Utility functions
-//-----------------------------------------------------------------------------
-
-int compare(const void *, const void *);
-
-void simplex_sort(simplex_t *);
-
-void get_centroid(const simplex_t *, point_t *);
-
-double modulus(double);
-
-int continue_minimization(const simplex_t *, int, int, const optimset_t *);
-
-void update_point(const simplex_t *, const point_t *, double, point_t *);
-
-void copy_point(int, const point_t *, point_t *);
-
-void swap_points(int, point_t *, point_t *);
+#ifdef __cplusplus
+}
+#endif
 
 #endif // NELDER_MEAD_H

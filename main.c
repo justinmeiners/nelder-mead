@@ -4,6 +4,9 @@
 
 #include "nelder_mead.h"
 
+#define PI 3.1415926535897932384626433832795
+#define SQUARE(x) ((x) * (x))
+
 //-----------------------------------------------------------------------------
 // Implementation of a cost function f : R^n->R compatible with fun_t
 // In this instance we use the Ackley Function as it allows us to demonstrate
@@ -17,7 +20,7 @@ typedef struct {
   double c;
 } ackley_param_t;
 
-void ackley_fun(int n, point_t *point, const void *arg) {
+double ackley_fun(int n, const double* x, const void *arg) {
   // cast the void pointer to what we expect to find
   const ackley_param_t *params = (const ackley_param_t *)arg;
 
@@ -25,12 +28,12 @@ void ackley_fun(int n, point_t *point, const void *arg) {
   double sum_squares = 0;
   double sum_cos = 0;
   for (int i = 0; i < n; i++) {
-    sum_squares += SQUARE(point->x[i]);
-    sum_cos += cos(params->c * point->x[i]);
+    sum_squares += SQUARE(x[i]);
+    sum_cos += cos(params->c * x[i]);
   }
 
   // final result
-  point->fx = -params->a * exp(-params->b * sqrt(sum_squares / n)) -
+  return -params->a * exp(-params->b * sqrt(sum_squares / n)) -
               exp(sum_cos / n) + params->a + exp(1.0);
 }
 
@@ -72,12 +75,12 @@ int main(int argc, const char *argv[]) {
 
   // evaluate and print starting point
   printf("Initial point\n");
-  ackley_fun(n, &start, &ackley_params);
+  double start_fx = ackley_fun(n, start.x, &ackley_params);
   printf("x = [ ");
   for (int i = 0; i < n; i++) {
     printf("%.8f ", start.x[i]);
   }
-  printf("], fx = %.8f \n", start.fx);
+  printf("], fx = %.8f \n", start_fx);
   // print solution
   printf("Solution\n");
   printf("x = [ ");
