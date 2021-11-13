@@ -80,7 +80,7 @@ int nm_multivar_optimize_opt(
     nm_multivar_real_func_t cost_func,
     void *args,
     const nm_optimset_t *optimset,
-    const double* simplex_scale
+    const double* simplex_size
 );
 
 
@@ -206,15 +206,16 @@ int nm_multivar_optimize(
 	void *args,
 	const nm_optimset_t *optimset
 ) {
-    double* simplex_scale = malloc(n * sizeof(double));
+    double* simplex_size = malloc(n * sizeof(double));
+    for (int j = 0; j < n; ++j) {
+        simplex_size[j] = (0.05 * fabs(start[j])) + 0.00025;
+    }
 
-    int result = nm_multivar_optimize_opt(n, start, out, out_val, cost_func, args, optimset, simplex_scale);
+    int result = nm_multivar_optimize_opt(n, start, out, out_val, cost_func, args, optimset, simplex_size);
 
-    free(simplex_scale);
+    free(simplex_size);
     return result;
 }
-
-
 
 #define RHO 1.0
 #define CHI 2.0
@@ -229,7 +230,7 @@ int nm_multivar_optimize_opt(
     nm_multivar_real_func_t cost_func,
     void *args,
     const nm_optimset_t *optimset,
-    const double* simplex_scale
+    const double* simplex_size
 ) {
   // internal points
   point_t point_r;
@@ -256,9 +257,7 @@ int nm_multivar_optimize_opt(
   for (int i = 0; i < n + 1; i++) {
     simplex.p[i].x = point_buffer + i * n; 
     for (int j = 0; j < n; j++) {
-      simplex.p[i].x[j] =
-          (i - 1 == j) ? (start[j] != 0.0 ? 1.05 * start[j] : 0.00025)
-                       : start[j];
+      simplex.p[i].x[j] = start[j] + ((i - 1 == j) ? simplex_size[j] : 0.0);
     }
     simplex.p[i].fx = cost_func(n, simplex.p[i].x, args);
   }
