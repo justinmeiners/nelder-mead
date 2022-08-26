@@ -1,7 +1,7 @@
 #define NM_OPTIMIZER_IMPLEMENTATION
 #define NM_NO_DEBUG_LOG
 
-#include "nelder_mead.h"
+#include "nm_optimizer.h"
 
 #include <stdio.h>
 #include <stdlib.h>

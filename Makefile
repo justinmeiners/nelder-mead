@@ -1,11 +1,11 @@
 
 FLAGS=-std=c99 -Wall -Wextra -pedantic
-CC_OPT=-O3 -ffast-math -fno-common
-BIN=nm
-SRC=main.c
+CFLAGS=-O3 -ffast-math -fno-common
+BIN=nm_test
+SRC=test.c
 
-compile:
-	gcc $(FLAGS) $(CC_OPT) -o $(BIN) $(SRC) -lm
+$(BIN): $(SRC)
+	gcc $(FLAGS) $(CFLAGS) -o $@ $< -lm
 
-test: compile
-	time ./$(BIN) -2.10 -3.04 4.50 
+test: $(BIN)
+	time ./$(BIN)
