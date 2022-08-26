@@ -1,12 +1,21 @@
+#define NM_OPTIMIZER_IMPLEMENTATION
+#define NM_NO_DEBUG_LOG
+
+#include "nelder_mead.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
 
-#define NELDER_MEAD_IMPLEMENTATION
-#include "nelder_mead.h"
 
 #define PI 3.1415926535897932384626433832795
 #define SQUARE(x) ((x) * (x))
+
+void print_point(double* x, double fx, int n) {
+    printf("x = [ ");
+    for (int i = 0; i < n; i++) printf("%.8f ", x[i]);
+    printf("], fx = %.8f \n", fx);
+}
 
 //-----------------------------------------------------------------------------
 // Implementation of a cost function f : R^n->R compatible with fun_t
@@ -38,67 +47,37 @@ double ackley_fun(int n, const double* x, void *arg) {
               exp(sum_cos / n) + params->a + exp(1.0);
 }
 
-//-----------------------------------------------------------------------------
-// main
-//-----------------------------------------------------------------------------
-
-int main(int argc, const char *argv[]) {
-  if (argc == 1) {
-    printf("%s: error: not enough inputs \n", argv[0]);
-    return 0;
-  }
-
-  // reading initial point from command line
-  const int n = argc - 1;
-
-  double *start = malloc(n * sizeof(double));
-  for (int i = 0; i < n; i++) {
-    start[i] = atof(argv[i + 1]);
-  }
-
-  // optimisation settings
-  nm_optimset_t optimset;
-  optimset.tolx = 0.001;    // tolerance on the simplex solutions coordinates
-  optimset.tolf = 0.001;    // tolerance on the function value
-  optimset.max_iter = 1000; // maximum number of allowed iterations
-  optimset.verbose = 1;     // toggle verbose output during minimization
+void test_ackley() {
+  int n = 3;
 
   // cost function parameters
-  ackley_param_t ackley_params; // parameters of our cost function
+  ackley_param_t ackley_params; 
   ackley_params.a = 20.0;
   ackley_params.b = 0.2;
   ackley_params.c = 2.0 * PI;
 
-  // call optimization methods
-  // container for the solution of the minimisation
-  double* solution_x = malloc(n * sizeof(double));
-  double solution_fx;
-  int code = nm_multivar_optimize(n, start, solution_x, &solution_fx, &ackley_fun, &ackley_params, &optimset);
+  // optimisation settings
+  nm_params_t params;
+  nm_params_init_default(&params, n);
+  params.debug_log = 1;
 
-  // evaluate and print starting point
+  double start[3] = { -2.1 -3.04, 4.5 };
+  double range[3] = { 5.0, 5.0, 5.0 };
+  double solution[3];
+
+  nm_result_t result = nm_multivar_optimize(n, start, range, &ackley_fun, &ackley_params, &params, solution);
+
   printf("Initial point\n");
   double start_fx = ackley_fun(n, start, &ackley_params);
-  printf("x = [ ");
-  for (int i = 0; i < n; i++) {
-    printf("%.8f ", start[i]);
-  }
-  printf("], fx = %.8f \n", start_fx);
-  // print solution
+  print_point(start, start_fx, n);
+
   printf("Solution\n");
-  printf("x = [ ");
-  for (int i = 0; i < n; i++) {
-    printf("%.8f ", solution_x[i]);
-  }
-  printf("], fx = %.8f \n", solution_fx);
+  print_point(solution, result.min_fx, n);
 
-  if (code == 0) {
-    printf("Exceeded max iterations\n");
-  }
+  if (result.tol_satisfied) printf("Tolerance critera met\n");
+}
 
-
-  // free memory
-  free(start);
-  free(solution_x);
-
-  return 0;
+int main(int argc, const char *argv[]) {
+    test_ackley();
+    return 0;
 }
