@@ -1,7 +1,7 @@
 /*
    Multivariable optimization without derivatives/gradients.
    Implementation of Nelder-Mead simplex algorithm.
-http://www.scholarpedia.org/article/Nelder-Mead_algorithm
+   http://www.scholarpedia.org/article/Nelder-Mead_algorithm
 
 Do this:
 

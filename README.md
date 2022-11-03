@@ -16,12 +16,12 @@ This is a fork of [Matteo's work](https://github.com/matteotiziano/nelder-mead) 
 Copy `nelder_mead.h` into your project. It is "single header style",
 so whenever you want the forward definitions include it normally:
 
-    #include "nelder_mead.h"
+    #include "nm_optimizer.h"
 
 Then it at least one `.c` file, include it again with a macro defined to get the implementation:
 
-    #define NELDER_MEAD_IMPLEMENTATION
-    #include "nelder_mead.h`
+    #define NM_OPTIMIZER_IMPLEMENTATION
+    #include "nm_optimizer.h`
 
 ## Example
 
